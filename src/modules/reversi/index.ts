@@ -8,6 +8,7 @@ import Friend from '@/friend.js';
 import getDate from '@/utils/get-date.js';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { User } from '@/misskey/user.js';
 
 const _filename = fileURLToPath(import.meta.url);
 const _dirname = dirname(_filename);
@@ -24,7 +25,7 @@ export default class extends Module {
 	public install() {
 		if (!config.reversiEnabled) return {};
 
-		this.reversiConnection = this.ai.connection.useSharedConnection('reversi');
+		this.reversiConnection = this.ai?.connection?.useSharedConnection('reversi');
 
 		// 招待されたとき
 		this.reversiConnection.on('invited', msg => this.onReversiInviteMe(msg.user));
@@ -33,10 +34,10 @@ export default class extends Module {
 		this.reversiConnection.on('matched', msg => this.onReversiGameStart(msg.game));
 
 		if (config.reversiEnabled) {
-			const mainStream = this.ai.connection.useSharedConnection('main');
-			mainStream.on('pageEvent', msg => {
+			const mainStream = this.ai?.connection?.useSharedConnection('main');
+			mainStream?.on('pageEvent', msg => {
 				if (msg.event === 'inviteReversi') {
-					this.ai.api('games/reversi/match', {
+					this.ai?.api('games/reversi/match', {
 						userId: msg.user.id
 					});
 				}
@@ -58,7 +59,7 @@ export default class extends Module {
 					msg.friend.updateReversiStrength(0);
 				}
 
-				this.ai.api('reversi/match', {
+				this.ai?.api('reversi/match', {
 					userId: msg.userId
 				});
 			} else {
@@ -77,7 +78,7 @@ export default class extends Module {
 
 		if (config.reversiEnabled) {
 			// 承認
-			const game = await this.ai.api('reversi/match', {
+			const game = await this.ai?.api('reversi/match', {
 				userId: inviter.id
 			});
 
@@ -90,7 +91,7 @@ export default class extends Module {
 	@bindThis
 	private onReversiGameStart(game: any) {
 		let strength = 5;
-		const friend = this.ai.lookupFriend(game.user1Id !== this.ai.account.id ? game.user1Id : game.user2Id)!;
+		const friend = this.ai?.lookupFriend(game.user1Id !== this.ai?.account.id ? game.user1Id : game.user2Id)!;
 		if (friend != null) {
 			strength = friend.doc.reversiStrength ?? 5;
 			friend.updateReversiStrength(null);
@@ -99,7 +100,7 @@ export default class extends Module {
 		this.log(`enter reversi game room: ${game.id}`);
 
 		// ゲームストリームに接続
-		const gw = this.ai.connection.connectToChannel('reversiGame', {
+		const gw = this.ai?.connection?.connectToChannel('reversiGame', {
 			gameId: game.id
 		});
 
@@ -141,25 +142,25 @@ export default class extends Module {
 			body: {
 				game: game,
 				form: form,
-				account: this.ai.account
+				account: this.ai?.account
 			}
 		});
 
 		ai.on('message', (msg: Record<string, any>) => {
 			if (msg.type == 'putStone') {
-				gw.send('putStone', {
+				gw?.send('putStone', {
 					pos: msg.pos,
 					id: msg.id,
 				});
 			} else if (msg.type == 'ended') {
-				gw.dispose();
+				gw?.dispose();
 
 				this.onGameEnded(game);
 			}
 		});
 
 		// ゲームストリームから情報が流れてきたらそのままバックエンドプロセスに伝える
-		gw.addListener('*', message => {
+		gw?.addListener('*', message => {
 			ai.send(message);
 
 			if (message.type === 'updateSettings') {
@@ -176,17 +177,17 @@ export default class extends Module {
 
 		// どんな設定内容の対局でも受け入れる
 		setTimeout(() => {
-			gw.send('ready', true);
+			gw?.send('ready', true);
 		}, 1000);
 	}
 
 	@bindThis
 	private onGameEnded(game: any) {
-		const user = game.user1Id == this.ai.account.id ? game.user2 : game.user1;
+		const user = game.user1Id == this.ai?.account.id ? game.user2 : game.user1;
 
 		//#region 1日に1回だけ親愛度を上げる
 		const today = getDate();
-
+		if (!this.ai) return;
 		const friend = new Friend(this.ai, { user: user });
 
 		const data = friend.getPerModulesData(this);

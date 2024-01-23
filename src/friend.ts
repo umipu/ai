@@ -43,12 +43,12 @@ export default class Friend {
 		this.ai = ai;
 
 		if (opts.user) {
-			const exist = this.ai.friends.findOne({
+			const exist = this.ai.friends?.findOne({
 				userId: opts.user.id
 			});
 
 			if (exist == null) {
-				const inserted = this.ai.friends.insertOne({
+				const inserted = this.ai.friends?.insertOne({
 					userId: opts.user.id,
 					user: opts.user
 				});
@@ -171,7 +171,7 @@ export default class Friend {
 
 	@bindThis
 	public save() {
-		this.ai.friends.update(this.doc);
+		this.ai.friends?.update(this.doc);
 	}
 
 	@bindThis
@@ -186,7 +186,7 @@ export default class Friend {
 
 	@bindThis
 	public transferMemory(code: string): boolean {
-		const src = this.ai.friends.findOne({
+		const src = this.ai.friends?.findOne({
 			transferCode: code
 		});
 

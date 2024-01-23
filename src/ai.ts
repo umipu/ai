@@ -6,7 +6,7 @@ import loki from 'lokijs';
 import got from 'got';
 import chalk from 'chalk';
 import { v4 as uuid } from 'uuid';
-
+import { FormData } from 'formdata-node'; 
 import config from '@/config.js';
 import Module from '@/module.js';
 import Message from '@/message.js';
@@ -16,10 +16,11 @@ import Stream from '@/stream.js';
 import log from '@/utils/log.js';
 import { sleep } from './utils/sleep.js';
 import pkg from '../package.json' assert { type: 'json' };
+import { Note } from './misskey/note.js';
 
-type MentionHook = (msg: Message) => Promise<boolean | HandlerResult>;
-type ContextHook = (key: any, msg: Message, data?: any) => Promise<void | boolean | HandlerResult>;
-type TimeoutCallback = (data?: any) => void;
+export type MentionHook = (msg: Message) => Promise<boolean | HandlerResult>;
+export type ContextHook = (key: any, msg: Message, data?: any) => Promise<void | boolean | HandlerResult>;
+export type TimeoutCallback = (data?: any) => void;
 
 export type HandlerResult = {
 	reaction?: string | null;
@@ -42,15 +43,15 @@ export type Meta = {
 export default class 藍 {
 	public readonly version = pkg._v;
 	public account: User;
-	public connection: Stream;
+	public connection: Stream | null = null;
 	public modules: Module[] = [];
 	private mentionHooks: MentionHook[] = [];
 	private contextHooks: { [moduleName: string]: ContextHook } = {};
 	private timeoutCallbacks: { [moduleName: string]: TimeoutCallback } = {};
 	public db: loki;
-	public lastSleepedAt: number;
+	public lastSleepedAt: number | null = null;
 
-	private meta: loki.Collection<Meta>;
+	private meta: loki.Collection<Meta> | null = null;
 
 	private contexts: loki.Collection<{
 		noteId?: string;
@@ -58,7 +59,7 @@ export default class 藍 {
 		module: string;
 		key: string | null;
 		data?: any;
-	}>;
+	}> | null = null;
 
 	private timers: loki.Collection<{
 		id: string;
@@ -66,10 +67,10 @@ export default class 藍 {
 		insertedAt: number;
 		delay: number;
 		data?: any;
-	}>;
+	}> | null = null;
 
-	public friends: loki.Collection<FriendDoc>;
-	public moduleData: loki.Collection<any>;
+	public friends: loki.Collection<FriendDoc> | null = null;
+	public moduleData: loki.Collection<any> | null = null;
 
 	/**
 	 * 藍インスタンスを生成します
@@ -220,7 +221,7 @@ export default class 藍 {
 		const isNoContext = msg.replyId == null;
 
 		// Look up the context
-		const context = isNoContext ? null : this.contexts.findOne({
+		const context = isNoContext ? null : this.contexts?.findOne({
 			noteId: msg.replyId
 		});
 
@@ -292,12 +293,12 @@ export default class 藍 {
 
 	@bindThis
 	private crawleTimer() {
-		const timers = this.timers.find();
-		for (const timer of timers) {
+		const timers = this.timers?.find();
+		for (const timer of timers ?? []) {
 			// タイマーが時間切れかどうか
 			if (Date.now() - (timer.insertedAt + timer.delay) >= 0) {
 				this.log(`Timer expired: ${timer.module} ${timer.id}`);
-				this.timers.remove(timer);
+				this.timers?.remove(timer);
 				this.timeoutCallbacks[timer.module](timer.data);
 			}
 		}
@@ -328,7 +329,7 @@ export default class 藍 {
 
 	@bindThis
 	public lookupFriend(userId: User['id']): Friend | null {
-		const doc = this.friends.findOne({
+		const doc = this.friends?.findOne({
 			userId: userId
 		});
 
@@ -344,15 +345,15 @@ export default class 藍 {
 	 */
 	@bindThis
 	public async upload(file: Buffer | fs.ReadStream, meta: any) {
+		const form = new FormData();
+		form.set("i", config.i);
+		form.set("file", {
+			value: file,
+			options: meta
+		});
 		const res = await got.post({
 			url: `${config.apiUrl}/drive/files/create`,
-			formData: {
-				i: config.i,
-				file: {
-					value: file,
-					options: meta
-				}
-			},
+			body: form,
 			json: true
 		}).json();
 		return res;
@@ -363,7 +364,10 @@ export default class 藍 {
 	 */
 	@bindThis
 	public async post(param: any) {
-		const res = await this.api('notes/create', param);
+		type NotesCreateResponse = {
+			createdNote: Note,
+		};
+		const res = await this.api('notes/create', param) as NotesCreateResponse;
 		return res.createdNote;
 	}
 
@@ -400,7 +404,7 @@ export default class 藍 {
 	 */
 	@bindThis
 	public subscribeReply(module: Module, key: string | null, id: string, data?: any) {
-		this.contexts.insertOne({
+		this.contexts?.insertOne({
 			noteId: id,
 			module: module.name,
 			key: key,
@@ -415,7 +419,7 @@ export default class 藍 {
 	 */
 	@bindThis
 	public unsubscribeReply(module: Module, key: string | null) {
-		this.contexts.findAndRemove({
+		this.contexts?.findAndRemove({
 			key: key,
 			module: module.name
 		});
@@ -431,7 +435,7 @@ export default class 藍 {
 	@bindThis
 	public setTimeoutWithPersistence(module: Module, delay: number, data?: any) {
 		const id = uuid();
-		this.timers.insertOne({
+		this.timers?.insertOne({
 			id: id,
 			module: module.name,
 			insertedAt: Date.now(),
@@ -444,7 +448,7 @@ export default class 藍 {
 
 	@bindThis
 	public getMeta() {
-		const rec = this.meta.findOne();
+		const rec = this.meta?.findOne();
 
 		if (rec) {
 			return rec;
@@ -453,7 +457,7 @@ export default class 藍 {
 				lastWakingAt: Date.now(),
 			};
 
-			this.meta.insertOne(initial);
+			this.meta?.insertOne(initial);
 			return initial;
 		}
 	}
@@ -466,6 +470,6 @@ export default class 藍 {
 			rec[k] = v;
 		}
 
-		this.meta.update(rec);
+		this.meta?.update(rec);
 	}
 }
