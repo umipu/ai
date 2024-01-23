@@ -6,7 +6,8 @@ import loki from 'lokijs';
 import got from 'got';
 import chalk from 'chalk';
 import { v4 as uuid } from 'uuid';
-import { FormData } from 'formdata-node'; 
+import { FormData } from 'formdata-node';
+import { FormDataEncoder } from 'form-data-encoder';
 import config from '@/config.js';
 import Module from '@/module.js';
 import Message from '@/message.js';
@@ -17,6 +18,7 @@ import log from '@/utils/log.js';
 import { sleep } from './utils/sleep.js';
 import pkg from '../package.json' assert { type: 'json' };
 import { Note } from './misskey/note.js';
+import { Readable } from 'stream';
 
 export type MentionHook = (msg: Message) => Promise<boolean | HandlerResult>;
 export type ContextHook = (key: any, msg: Message, data?: any) => Promise<void | boolean | HandlerResult>;
@@ -344,18 +346,15 @@ export default class 藍 {
 	 * ファイルをドライブにアップロードします
 	 */
 	@bindThis
-	public async upload(file: Buffer | fs.ReadStream, meta: any) {
-		const form = new FormData();
-		form.set("i", config.i);
-		form.set("file", {
-			value: file,
-			options: meta
-		});
-		const res = await got.post({
-			url: `${config.apiUrl}/drive/files/create`,
-			body: form,
-			json: true
-		}).json();
+	public async upload(file: Buffer, meta: any) {
+		let formData: FormData = new FormData();
+		formData.set('i', config.i);
+		formData.set('file', new Blob([file]), meta);
+		// TODO: gotに置き換える
+		const res = await (await fetch(`${config.apiUrl}/drive/files/create`, {
+			method: 'POST',
+			body: formData,
+		})).json();
 		return res;
 	}
 
