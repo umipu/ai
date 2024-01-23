@@ -17,7 +17,7 @@ type Config = {
 	memoryDir?: string;
 };
 
-import config from '../config.json' assert { type: 'json' };
+import config from '../config/config.json' assert { type: 'json' };
 
 let conf = {
 	wsUrl: config.host.replace('http', 'ws'),
