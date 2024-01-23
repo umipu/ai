@@ -1,13 +1,11 @@
 // AI CORE
 
-import * as fs from 'fs';
 import { bindThis } from '@/decorators.js';
 import loki from 'lokijs';
 import got from 'got';
 import chalk from 'chalk';
 import { v4 as uuid } from 'uuid';
 import { FormData } from 'formdata-node';
-import { FormDataEncoder } from 'form-data-encoder';
 import config from '@/config.js';
 import Module from '@/module.js';
 import Message from '@/message.js';
@@ -18,7 +16,6 @@ import log from '@/utils/log.js';
 import { sleep } from './utils/sleep.js';
 import pkg from '../package.json' assert { type: 'json' };
 import { Note } from './misskey/note.js';
-import { Readable } from 'stream';
 
 export type MentionHook = (msg: Message) => Promise<boolean | HandlerResult>;
 export type ContextHook = (key: any, msg: Message, data?: any) => Promise<void | boolean | HandlerResult>;
