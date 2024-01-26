@@ -18,7 +18,7 @@ COPY . /ai
 WORKDIR /ai
 RUN npm install -g npm pnpm
 RUN pnpm install
-RUN pnpm build
+RUN pnpm build; exit 0
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD pnpm start

@@ -8,7 +8,6 @@ import Friend from '@/friend.js';
 import getDate from '@/utils/get-date.js';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { User } from '@/misskey/user.js';
 
 const _filename = fileURLToPath(import.meta.url);
 const _dirname = dirname(_filename);
@@ -91,7 +90,7 @@ export default class extends Module {
 	@bindThis
 	private onReversiGameStart(game: any) {
 		let strength = 5;
-		const friend = this.ai?.lookupFriend(game.user1Id !== this.ai?.account.id ? game.user1Id : game.user2Id)!;
+		const friend = this.ai?.lookupFriend(game.user1Id !== this.ai.account.id ? game.user1Id : game.user2Id)!;
 		if (friend != null) {
 			strength = friend.doc.reversiStrength ?? 5;
 			friend.updateReversiStrength(null);
@@ -166,9 +165,9 @@ export default class extends Module {
 			if (message.type === 'updateSettings') {
 				if (message.body.key === 'canPutEverywhere') {
 					if (message.body.value === true) {
-						gw.send('ready', false);
+						gw?.send('ready', false);
 					} else {
-						gw.send('ready', true);
+						gw?.send('ready', true);
 					}
 				}
 			}
@@ -187,8 +186,8 @@ export default class extends Module {
 
 		//#region 1日に1回だけ親愛度を上げる
 		const today = getDate();
-		if (!this.ai) return;
-		const friend = new Friend(this.ai, { user: user });
+
+		const friend = new Friend(this.ai!, { user: user });
 
 		const data = friend.getPerModulesData(this);
 

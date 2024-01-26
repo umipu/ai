@@ -25,11 +25,11 @@ const titles = [
 ];
 
 class Session {
-	private account: User | null = null;
+	private account: User;
 	private game: any;
 	private form: any;
-	private engine: Reversi.Game | null = null;
-	private botColor: Reversi.Color | null = null;
+	private engine: Reversi.Game;
+	private botColor: Reversi.Color;
 
 	private appliedOps: string[] = [];
 
@@ -59,7 +59,7 @@ class Session {
 	private startedNote: any = null;
 
 	private get user(): User {
-		return this.game.user1Id == this.account?.id ? this.game.user2 : this.game.user1;
+		return this.game.user1Id == this.account.id ? this.game.user2 : this.game.user1;
 	}
 
 	private get userName(): string {
@@ -134,12 +134,11 @@ class Session {
 		//#region 隅
 		this.engine.map.forEach((pix, i) => {
 			if (pix == 'null') return;
-			if (!this.engine) return;
 
 			const [x, y] = this.engine.posToXy(i);
 			const get = (x, y) => {
-				if (x < 0 || y < 0 || x >= this.engine!.mapWidth || y >= this.engine!.mapHeight) return 'null';
-				return this.engine!.mapDataGet(this.engine!.xyToPos(x, y));
+				if (x < 0 || y < 0 || x >= this.engine.mapWidth || y >= this.engine.mapHeight) return 'null';
+				return this.engine.mapDataGet(this.engine.xyToPos(x, y));
 			};
 
 			const isNotSumi = (
@@ -175,11 +174,11 @@ class Session {
 			if (pix == 'null') return;
 			if (this.sumiIndexes.includes(i)) return;
 
-			const [x, y] = this.engine!.posToXy(i);
+			const [x, y] = this.engine.posToXy(i);
 
 			const check = (x, y) => {
-				if (x < 0 || y < 0 || x >= this.engine!.mapWidth || y >= this.engine!.mapHeight) return 0;
-				return this.sumiIndexes.includes(this.engine!.xyToPos(x, y));
+				if (x < 0 || y < 0 || x >= this.engine.mapWidth || y >= this.engine.mapHeight) return 0;
+				return this.sumiIndexes.includes(this.engine.xyToPos(x, y));
 			};
 
 			const isSumiNear = (
@@ -199,7 +198,7 @@ class Session {
 
 		//#endregion
 
-		this.botColor = this.game.user1Id == this.account?.id && this.game.black == 1 || this.game.user2Id == this.account?.id && this.game.black == 2;
+		this.botColor = this.game.user1Id == this.account.id && this.game.black == 1 || this.game.user2Id == this.account.id && this.game.black == 2;
 
 		if (this.botColor) {
 			this.think();
@@ -224,7 +223,7 @@ class Session {
 				text = serifs.reversi.youSurrendered(this.userName);
 			}
 		} else if (msg.winnerId) {
-			if (msg.winnerId == this.account?.id) {
+			if (msg.winnerId == this.account.id) {
 				if (this.isSettai) {
 					text = serifs.reversi.iWonButSettai(this.userName);
 				} else {
@@ -257,10 +256,10 @@ class Session {
 		if (log.id == null || !this.appliedOps.includes(log.id)) {
 			switch (log.operation) {
 				case 'put': {
-					this.engine?.putStone(log.pos);
+					this.engine.putStone(log.pos);
 					this.currentTurn++;
 
-					if (this.engine?.turn === this.botColor) {
+					if (this.engine.turn === this.botColor) {
 						this.think();
 					}
 					break;
@@ -278,10 +277,10 @@ class Session {
 	 * TODO: 接待時はまるっと処理の中身を変え、とにかく相手が隅を取っていること優先な評価にする
 	 */
 	private staticEval = () => {
-		let score = this.engine?.getPuttablePlaces(this.botColor!).length;
-		if (!score) return;
+		let score = this.engine.getPuttablePlaces(this.botColor).length;
+
 		for (const index of this.sumiIndexes) {
-			const stone = this.engine?.board[index];
+			const stone = this.engine.board[index];
 
 			if (stone === this.botColor) {
 				score += 1000; // 自分が隅を取っていたらスコアプラス
@@ -293,7 +292,7 @@ class Session {
 		// TODO: ここに (隅以外の確定石の数 * 100) をスコアに加算する処理を入れる
 
 		for (const index of this.sumiNearIndexes) {
-			const stone = this.engine?.board[index];
+			const stone = this.engine.board[index];
 
 			if (stone === this.botColor) {
 				score -= 10; // 自分が隅の周辺を取っていたらスコアマイナス(危険なので)
@@ -327,14 +326,14 @@ class Session {
 		/**
 		 * αβ法での探索
 		 */
-		const dive = (pos: number, alpha = -Infinity, beta = Infinity, depth = 0): number | null => {
+		const dive = (pos: number, alpha = -Infinity, beta = Infinity, depth = 0): number => {
 			// 試し打ち
-			this.engine?.putStone(pos);
+			this.engine.putStone(pos);
 
-			const isBotTurn = this.engine?.turn === this.botColor;
+			const isBotTurn = this.engine.turn === this.botColor;
 
 			// 勝った
-			if (this.engine?.turn === null) {
+			if (this.engine.turn === null) {
 				const winner = this.engine.winner;
 
 				// 勝つことによる基本スコア
@@ -361,14 +360,14 @@ class Session {
 
 			if (depth === maxDepth) {
 				// 静的に評価
-				const score = this.staticEval() ?? null;
+				const score = this.staticEval();
 
 				// 巻き戻し
-				this.engine?.undo();
+				this.engine.undo();
 
 				return score;
 			} else {
-				const cans = this.engine?.getPuttablePlaces(this.engine.turn);
+				const cans = this.engine.getPuttablePlaces(this.engine.turn);
 
 				let value = isBotTurn ? -Infinity : Infinity;
 				let a = alpha;
@@ -379,16 +378,14 @@ class Session {
 
 				// 次のターンのプレイヤーにとって最も良い手を取得
 				// TODO: cansをまず浅く読んで(または価値マップを利用して)から有益そうな手から順に並べ替え、効率よく枝刈りできるようにする
-				for (const p of cans ?? []) {
+				for (const p of cans) {
 					if (isBotTurn) {
 						const score = dive(p, a, beta, nextDepth);
-						if (!score) return null;
 						value = Math.max(value, score);
 						a = Math.max(a, value);
 						if (value >= beta) break;
 					} else {
 						const score = dive(p, alpha, b, nextDepth);
-						if (!score) return null;
 						value = Math.min(value, score);
 						b = Math.min(b, value);
 						if (value <= alpha) break;
@@ -396,22 +393,20 @@ class Session {
 				}
 
 				// 巻き戻し
-				this.engine?.undo();
+				this.engine.undo();
 
 				return value;
 			}
 		};
 
-		const cans = this.engine?.getPuttablePlaces(this.botColor!);
-		if (cans == null) return null;
-		const scores = cans.map(p => dive(p)) as number[] ?? [];
-		if (!scores) return null;
-		const pos = cans[scores.indexOf(Math.max(...scores ?? []))];
-		if (!pos) return null;
+		const cans = this.engine.getPuttablePlaces(this.botColor);
+		const scores = cans.map(p => dive(p));
+		const pos = cans[scores.indexOf(Math.max(...scores))];
+
 		console.log('Thinked:', pos);
 		console.timeEnd('think');
 
-		this.engine?.putStone(pos);
+		this.engine.putStone(pos);
 		this.currentTurn++;
 
 		setTimeout(() => {
@@ -423,11 +418,10 @@ class Session {
 			});
 			this.appliedOps.push(id);
 
-			if (this.engine?.turn === this.botColor) {
+			if (this.engine.turn === this.botColor) {
 				this.think();
 			}
 		}, 500);
-		return;
 	}
 
 	/**
@@ -461,7 +455,6 @@ class Session {
 				const res = await got.post(`${config.host}/api/notes/create`, {
 					json: body
 				}).json();
-
 				type NotesCreateResponse = {
 					createdNote: Note,
 				};
