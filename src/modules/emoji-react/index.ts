@@ -68,6 +68,12 @@ export default class extends Module {
 		if (includes(note.text, ['ぷりん'])) return react('🍮');
 		if (includes(note.text, ['寿司', 'sushi']) || note.text === 'すし') return react('🍣');
 
-		if (includes(note.text, ['藍'])) return react('🙌');
+		if (includes(note.text, ['えれな'])) return react('🙌');
+		if (includes(note.text, ['ネギ'])) return react(':negi:');
+		if (includes(note.text, ['りう'])) return react(':liu_stop:');
+		if (includes(note.text, ['ハンハン'])) return react(':suihan_stop:');
+		if (includes(note.text, ['つめきり'])) return react(':tsumekiri_stop:');
+		if (includes(note.text, ['柿ピー'])) return react(':wakaru:');
+		if (includes(note.text, ['みなほし'])) return react(':minahoshi_love:');
 	}
 }
